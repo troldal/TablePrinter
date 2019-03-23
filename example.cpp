@@ -5,7 +5,7 @@
 #include "tableprinter.h"
 #include <cmath>
 int main() {
-    TablePrinter::TablePrinter tp(&std::cout);
+    TablePrinter::TablePrinter tp;
     tp.AddColumn("Name", 25);
     tp.AddColumn("Age", 5);
     tp.AddColumn("Position", 30);

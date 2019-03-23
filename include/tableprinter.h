@@ -67,14 +67,10 @@ namespace TablePrinter {
          * @param output
          * @param separator
          */
-        explicit TablePrinter(std::ostream* output, const std::string& separator = "|") {
+        explicit TablePrinter(std::ostream& output = std::cout, const std::string& separator = "|")
+                : m_outStream(output),
+                  m_columnSeparator(separator) {
 
-            out_stream_  = output;
-            i_           = 0;
-            j_           = 0;
-            separator_   = separator;
-            table_width_ = 0;
-            flush_left_  = false;
         }
 
         /**
@@ -113,7 +109,7 @@ namespace TablePrinter {
          */
         int get_num_columns() const {
 
-            return column_headers_.size();
+            return m_columnHeaders.size();
         }
 
         /**
@@ -131,7 +127,7 @@ namespace TablePrinter {
          */
         void set_separator(const std::string& separator) {
 
-            separator_ = separator;
+            m_columnSeparator = separator;
         }
 
         /**
@@ -161,9 +157,9 @@ namespace TablePrinter {
                 throw std::invalid_argument("Column size has to be >= 4");
             }
 
-            column_headers_.push_back(header_name);
-            column_widths_.push_back(column_width);
-            table_width_ += column_width + separator_.size(); // for the separator
+            m_columnHeaders.push_back(header_name);
+            m_columnWidths.push_back(column_width);
+            table_width_ += column_width + m_columnSeparator.size(); // for the separator
         }
 
         /**
@@ -173,8 +169,8 @@ namespace TablePrinter {
         void PrintTitle(const std::string& title) {
 
             auto totalWidth = 0;
-            for (auto& it : column_widths_) totalWidth += it;
-            totalWidth += column_widths_.size() - 1;
+            for (auto& it : m_columnWidths) totalWidth += it;
+            totalWidth += m_columnWidths.size() - 1;
 
             auto tit        = title;
             auto titleWidth = tit.length();
@@ -184,11 +180,11 @@ namespace TablePrinter {
             auto post = (totalWidth - tit.length() - pre);
 
             PrintHorizontalLine('=');
-            *out_stream_ << "|";
-            for (int i = 0; i < pre; ++i) *out_stream_ << " ";
-            *out_stream_ << tit;
-            for (int i = 0; i < post; ++i) *out_stream_ << " ";
-            *out_stream_ << "|\n";
+            m_outStream << "|";
+            for (int i = 0; i < pre; ++i) m_outStream << " ";
+            m_outStream << tit;
+            for (int i = 0; i < post; ++i) m_outStream << " ";
+            m_outStream << "|\n";
 
         }
 
@@ -198,22 +194,22 @@ namespace TablePrinter {
         void PrintHeader() {
 
             PrintHorizontalLine('=');
-            *out_stream_ << "|";
+            m_outStream << "|";
 
             for (int i = 0; i < get_num_columns(); ++i) {
 
                 if (flush_left_)
-                    *out_stream_ << std::left;
+                    m_outStream << std::left;
                 else
-                    *out_stream_ << std::right;
+                    m_outStream << std::right;
 
-                *out_stream_ << std::setw(column_widths_.at(i)) << column_headers_.at(i).substr(0, column_widths_.at(i));
+                m_outStream << std::setw(m_columnWidths.at(i)) << m_columnHeaders.at(i).substr(0, m_columnWidths.at(i));
                 if (i != get_num_columns() - 1) {
-                    *out_stream_ << separator_;
+                    m_outStream << m_columnSeparator;
                 }
             }
 
-            *out_stream_ << "|\n";
+            m_outStream << "|\n";
             PrintHorizontalLine('=');
         }
 
@@ -230,7 +226,7 @@ namespace TablePrinter {
          */
         TablePrinter& operator<<(endl input) {
 
-            while (j_ != 0) {
+            while (m_columnIndex != 0) {
                 *this << "";
             }
             return *this;
@@ -250,25 +246,25 @@ namespace TablePrinter {
             }
             else {
 
-                if (j_ == 0)
-                    *out_stream_ << "|";
+                if (m_columnIndex == 0)
+                    m_outStream << "|";
 
                 if (flush_left_)
-                    *out_stream_ << std::left;
+                    m_outStream << std::left;
                 else
-                    *out_stream_ << std::right;
+                    m_outStream << std::right;
 
                 // Leave 3 extra space: One for negative sign, one for zero, one for decimal
-                *out_stream_ << std::setw(column_widths_.at(j_)) << input;
+                m_outStream << std::setw(m_columnWidths.at(m_columnIndex)) << input;
 
-                if (j_ == get_num_columns() - 1) {
-                    *out_stream_ << "|\n";
-                    i_ = i_ + 1;
-                    j_ = 0;
+                if (m_columnIndex == get_num_columns() - 1) {
+                    m_outStream << "|\n";
+                    m_rowIndex    = m_rowIndex + 1;
+                    m_columnIndex = 0;
                 }
                 else {
-                    *out_stream_ << separator_;
-                    j_ = j_ + 1;
+                    m_outStream << m_columnSeparator;
+                    m_columnIndex = m_columnIndex + 1;
                 }
             }
             return *this;
@@ -282,13 +278,13 @@ namespace TablePrinter {
          */
         void PrintHorizontalLine(char character = '-') {
 
-            *out_stream_ << "+"; // the left bar
+            m_outStream << "+"; // the left bar
 
             for (int i = 0; i < table_width_ - 1; ++i)
-                *out_stream_ << character;
+                m_outStream << character;
 
-            *out_stream_ << "+"; // the right bar
-            *out_stream_ << "\n";
+            m_outStream << "+"; // the right bar
+            m_outStream << "\n";
         }
 
         /**
@@ -299,21 +295,21 @@ namespace TablePrinter {
         template<typename T>
         void OutputDecimalNumber(T input) {
             // If we cannot handle this number, indicate so
-            if (input < 10 * (column_widths_.at(j_) - 1) || input > 10 * column_widths_.at(j_)) {
+            if (input < 10 * (m_columnWidths.at(m_columnIndex) - 1) || input > 10 * m_columnWidths.at(m_columnIndex)) {
                 std::stringstream string_out;
-                string_out << std::setiosflags(std::ios::fixed) << std::setprecision(column_widths_.at(j_))
-                           << std::setw(column_widths_.at(j_)) << input;
+                string_out << std::setiosflags(std::ios::fixed) << std::setprecision(m_columnWidths.at(m_columnIndex))
+                           << std::setw(m_columnWidths.at(m_columnIndex)) << input;
 
                 std::string string_rep_of_number = string_out.str();
 
-                string_rep_of_number[column_widths_.at(j_) - 1] = '*';
-                std::string string_to_print = string_rep_of_number.substr(0, column_widths_.at(j_));
-                *out_stream_ << string_to_print;
+                string_rep_of_number[m_columnWidths.at(m_columnIndex) - 1] = '*';
+                std::string string_to_print = string_rep_of_number.substr(0, m_columnWidths.at(m_columnIndex));
+                m_outStream << string_to_print;
             }
             else {
 
                 // determine what precision we need
-                int precision = column_widths_.at(j_) - 1; // leave room for the decimal point
+                int precision = m_columnWidths.at(m_columnIndex) - 1; // leave room for the decimal point
                 if (input < 0)
                     --precision; // leave room for the minus sign
 
@@ -328,31 +324,31 @@ namespace TablePrinter {
                 if (precision < 0)
                     precision = 0; // don't go negative with precision
 
-                *out_stream_ << std::setiosflags(std::ios::fixed) << std::setprecision(precision)
-                             << std::setw(column_widths_.at(j_)) << input;
+                m_outStream << std::setiosflags(std::ios::fixed) << std::setprecision(precision)
+                            << std::setw(m_columnWidths.at(m_columnIndex)) << input;
             }
 
-            if (j_ == get_num_columns() - 1) {
-                *out_stream_ << "|\n";
-                i_ = i_ + 1;
-                j_ = 0;
+            if (m_columnIndex == get_num_columns() - 1) {
+                m_outStream << "|\n";
+                m_rowIndex    = m_rowIndex + 1;
+                m_columnIndex = 0;
             }
             else {
-                *out_stream_ << separator_;
-                j_ = j_ + 1;
+                m_outStream << m_columnSeparator;
+                m_columnIndex = m_columnIndex + 1;
             }
         }
 
-        std::ostream* out_stream_; /**< */
-        std::vector<std::string> column_headers_; /**< */
-        std::vector<int>         column_widths_; /**< */
-        std::string              separator_; /**< */
+        std::ostream& m_outStream; /**< */
+        std::vector<std::string> m_columnHeaders; /**< */
+        std::vector<int>         m_columnWidths; /**< */
+        std::string              m_columnSeparator; /**< */
 
-        int i_; /**< index of current row */
-        int j_; /**< index of current column */
+        int m_rowIndex{0}; /**< index of current row */
+        int m_columnIndex{0}; /**< index of current column */
 
-        int  table_width_; /**< */
-        bool flush_left_; /**< */
+        int  table_width_{0}; /**< */
+        bool flush_left_{false}; /**< */
     };
 } // namespace TablePrinter
 
