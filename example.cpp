@@ -3,7 +3,7 @@
 //
 
 #include "tableprinter.h"
-
+#include <cmath>
 int main() {
     TablePrinter::TablePrinter tp(&std::cout);
     tp.AddColumn("Name", 25);
