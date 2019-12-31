@@ -2,10 +2,11 @@
 // Created by Troldal on 2019-03-14.
 //
 
-#include "tableprinter.h"
+#include <TablePrinter.hpp>
 #include <cmath>
+
 int main() {
-    TablePrinter::TablePrinter tp;
+    trl::TablePrinter tp;
     tp.AddColumn("Name", 25);
     tp.AddColumn("Age", 5);
     tp.AddColumn("Position", 30);
@@ -21,7 +22,7 @@ int main() {
     tp << "John Doe" << 26 << "Exact size int" << -12545678;
     tp << "John Doe" << 26 << "Exact size float" << -1254567.8;
     tp << "John Doe" << 26 << "Negative Int" << -1254;
-    tp << "Jane Doe" << TablePrinter::endl();
+    tp << "Jane Doe" << trl::endl();
     tp << "Tom Doe" << 7 << "Student" << -M_PI;
     tp.PrintFooter();
 
