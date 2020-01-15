@@ -59,9 +59,9 @@ void IntermediateTable() {
     table.printTitle = true;
 
     trl::TitleFormat title;
-    title.text  = "Intermediate Table";
+    title.text  = "Advanced Usage";
     title.style = trl::TextStyle::Bold | trl::TextStyle::Reversed;
-    title.color = trl::TextColor::Blue;
+    title.color = trl::TextColor::Magenta;
 
     trl::HeaderFormat header;
     header.style = trl::TextStyle::Bold;
@@ -91,7 +91,7 @@ void IntermediateTable() {
     colAllowance.showIntsAsFloats = true;
     colAllowance.color            = trl::TextColor::Green;
     colAllowance.headerText       = "Allowance";
-    colAllowance.width            = 10;
+    colAllowance.width            = 20;
 
     trl::TablePrinter tp(std::cout, table, title, header);
 

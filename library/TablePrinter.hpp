@@ -42,31 +42,60 @@
 
 namespace trl
 {
+    /**
+     * @brief
+     */
     enum class LineStyle
     {
         Single, Double, Block
     };
+
+    /**
+     * @brief
+     */
     enum class TextStyle
     {
         Bold = 1, Dim = 2, Italic = 4, Underline = 8, Blink = 16, Reversed = 32, Default = 0
     };
+
+    /**
+     * @brief
+     */
     enum class TextColor
     {
         Black, Red, Green, Yellow, Blue, Magenta, Cyan, Gray, Default
     };
+
+    /**
+     * @brief
+     */
     enum class TextAlignment
     {
         Left, Right, Center, Decimal
     };
+
+    /**
+     * @brief
+     */
     enum class TableMode
     {
         Setup, Printing
     };
+
+    /**
+     * @brief
+     */
     enum class DecimalFormat
     {
         Fixed, Scientific
     };
 
+    /**
+     * @brief
+     * @param lhs
+     * @param rhs
+     * @return
+     */
     inline TextStyle operator|(TextStyle lhs,
                                TextStyle rhs) {
         return static_cast<TextStyle> (
@@ -75,6 +104,12 @@ namespace trl
         );
     }
 
+    /**
+     * @brief
+     * @param lhs
+     * @param rhs
+     * @return
+     */
     inline TextStyle operator&(TextStyle lhs,
                                TextStyle rhs) {
         return static_cast<TextStyle> (
@@ -121,6 +156,9 @@ namespace trl
         bool printFrame = true;
     };
 
+    /**
+     * @brief
+     */
     struct ColumnFormat
     {
         std::string headerText;
@@ -183,35 +221,44 @@ namespace trl
         }
 
         /**
-         * @brief
+         * @brief Copy Assignment Operator [Deleted]
+         * @param other The object to be move-assigned
+         * @note This method has been explicitly deleted
          */
-        TablePrinter(const TablePrinter& other) = delete;
+        TablePrinter(const TablePrinter& other) = delete; // TODO: Consider if it makes sense to enable this.
 
         /**
-         * @brief
-         * @param other
+         * @brief Move Constructor [Deleted]
+         * @param other The object to be move-assigned
+         * @note This method has been explicitly deleted
          */
-        TablePrinter(TablePrinter&& other) = delete;
+        TablePrinter(TablePrinter&& other) = delete; // TODO: Consider if it makes sense to enable this.
 
         /**
-         * @brief
+         * @brief Destructor
          */
         ~TablePrinter() = default;
 
         /**
-         * @brief
-         * @param other
-         * @return
+         * @brief Copy Assignment Operator [Deleted]
+         * @param other The object to be move-assigned
+         * @return A reference to the moved-to object.
+         * @note This method has been explicitly deleted
          */
-        TablePrinter& operator=(const TablePrinter& other) = delete;
+        TablePrinter& operator=(const TablePrinter& other) = delete; // TODO: Consider if it makes sense to enable this.
+
+        /**
+         * @brief Move Assignment Operator [Deleted]
+         * @param other The object to be move-assigned
+         * @return A reference to the moved-to object.
+         * @note This method has been explicitly deleted
+         */
+        TablePrinter& operator=(TablePrinter&& other) = delete; // TODO: Consider if it makes sense to enable this.
 
         /**
          * @brief
-         * @param other
-         * @return
+         * @param colProps
          */
-        TablePrinter& operator=(TablePrinter&& other) = delete;
-
         void AddColumn(const ColumnFormat& colProps) {
 
             if (GetTableMode() == TableMode::Printing)
@@ -222,7 +269,6 @@ namespace trl
 
             m_columns.emplace_back(Column(*this, colProps));
             m_currentColumn = m_columns.begin();
-
         }
 
         /**
@@ -233,133 +279,83 @@ namespace trl
         void AddColumn(const std::string& columnTitle,
                        int columnWidth) {
 
-            if (GetTableMode() == TableMode::Printing)
-                throw std::runtime_error("Cannot add columns while table is in printing mode.");
-
-            if (columnWidth < 4)
-                throw std::invalid_argument("Column width has to be >= 4");
-
             ColumnFormat colProps;
             colProps.headerText = columnTitle;
             colProps.width      = columnWidth;
-            m_columns.emplace_back(Column(*this, colProps));
-            m_currentColumn = m_columns.begin();
+
+            AddColumn(colProps);
         }
 
+        /**
+         * @brief
+         */
         void Begin() {
 
             SetTableMode(TableMode::Printing);
 
+            PrintHorizontalLine();
             m_outStream << "\r";
             if (m_tableProperties.printTitle)
                 m_title.Print(m_outStream);
             if (m_tableProperties.printHeader)
                 m_header.Print(m_outStream);
-
             PrintHorizontalLine();
         }
 
+        /**
+         * @brief
+         */
         void End() {
 
             PrintHorizontalLine();
             SetTableMode(TableMode::Setup);
         }
 
-        int TableWidth() const {
+        /**
+         * @brief Get the total width of the table, including margins and column separators.
+         * @return An int with the width of the table.
+         */
+        int TableWidth() const { // TODO: Find a way to make this a private function.
 
+            // ===== Add the widths of the columns.
             int result = 0;
             for (auto& col : m_columns)
                 result += col.ColumnWidth();
 
-            return result;
+            // ===== Add the number of column separators to the result.
+            return result + m_columns.size() - 1;
         }
 
         /**
-         *
-         */
-        TablePrinter& operator<<(endl input) {
-
-            *this << "";
-            while (m_currentColumn != m_columns.begin())
-                *this << "";
-            return *this;
-        }
-
-        /**
-         * @brief
-         * @tparam T
-         * @param input
-         * @return
+         * @brief An overload of operator<<, used for adding data to the table.
+         * @tparam T The type of the input data.
+         * @param input The input data
+         * @return A reference to the current TablePrinter object.
          */
         template<typename T>
         TablePrinter& operator<<(T input) {
 
+            // ===== Check if the table is in printing mode.
             if (GetTableMode() != TableMode::Printing)
-                throw std::runtime_error("Table must be in Printing mode.");
+                throw std::runtime_error("The 'Begin()' method must be called before adding data to the table.");
 
-            m_currentColumn->PrintData(input);
-            NextColumn();
+            // ===== If a trl::endl object is passed, skip to the next row by passing empty strings to the remaining columns.
+            if constexpr (std::is_same_v<T, trl::endl>) {
+                // =====
+                *this << "";
+                while (m_currentColumn != m_columns.begin())
+                    *this << "";
+            }
+                // ===== Otherwise, pass the input to the PrintData method of the current column.
+            else {
+                m_currentColumn->PrintData(input); // TODO: Consider having PrintData return a formatted string.
+                NextColumn();
+            }
 
             return *this;
         }
 
-    private: // ===== Private Member Functions
-
-        void SetTableMode(TableMode mode) {
-            m_mode = mode;
-        }
-
-        TableMode GetTableMode() const {
-            return m_mode;
-        }
-
-        static std::string FormatText(const std::string& text,
-                                      int width,
-                                      TextAlignment alignment) {
-
-            if (text.size() == width)
-                return text;
-            if (text.size() > width)
-                return text.substr(0, width);
-
-            int paddingLeft;
-            int paddingRight;
-
-            switch (alignment) {
-                case TextAlignment::Right : {
-                    paddingLeft  = width - text.size();
-                    paddingRight = 0;
-                    break;
-                }
-
-                case TextAlignment::Left : {
-                    paddingLeft  = 0;
-                    paddingRight = width - text.size();
-                    break;
-                }
-
-                case TextAlignment::Decimal : {
-                    paddingLeft  = width - text.size();
-                    paddingRight = 0;
-                    break;
-                }
-
-                case TextAlignment::Center : {
-                    paddingLeft  = (width - text.size()) / 2;
-                    paddingRight = width - text.size() - paddingLeft;
-                }
-            }
-
-            std::stringstream result;
-
-            for (auto i = 0; i < paddingLeft; ++i)
-                result << " ";
-            result << text;
-            for (auto i = 0; i < paddingRight; ++i)
-                result << " ";
-
-            return result.str();
-        }
+    private: // ===== Nested Classes
 
         /**
          * @brief
@@ -414,8 +410,11 @@ namespace trl
 
                 SetStreamFormat(stream, m_properties.style, m_properties.color);
 
-                for (auto& col : m_table.m_columns)
+                for (auto& col : m_table.m_columns) {
                     col.PrintHeader();
+                    if (&col != &m_table.m_columns.back())
+                        m_table.m_outStream << " ";
+                }
 
                 ResetStreamFormat(stream);
 
@@ -601,11 +600,31 @@ namespace trl
             const TablePrinter& m_table;
         };
 
+        /**
+         * @brief An alias for a std::vector of Columns
+         */
         using Columns = std::vector<Column>;
 
+    private: // ===== Private Member Functions
+
         /**
-         * @brief
-         * @param character
+         * @brief Set the mode/state of the table.
+         * @param mode A TableMode enum value to set the table to.
+         */
+        void SetTableMode(TableMode mode) {
+            m_mode = mode;
+        }
+
+        /**
+         * @brief Get the current state/mode of the table
+         * @return A TableMode enum value representing the mode of the table.
+         */
+        TableMode GetTableMode() const {
+            return m_mode;
+        }
+
+        /**
+         * @brief Convenience function for printing a horizontal line in the table.
          */
         void PrintHorizontalLine() const {
 
@@ -621,13 +640,24 @@ namespace trl
             m_outStream << "\n";
         }
 
+        /**
+         * @brief Convenience function for jumping to the next column. If the last column has been reached, it will jump
+         * to the first column in the next row. Also prints the column separator.
+         * @return An iterator to the current column.
+         */
         Columns::iterator NextColumn() {
 
+            // ===== Jump to the next column.
             ++m_currentColumn;
 
+            // ===== If the end of the Columns collection has been reached, jump to the first column of the next row.
             if (m_currentColumn == m_columns.end()) {
                 m_outStream << "\n";
                 m_currentColumn = m_columns.begin();
+            }
+                // ===== Otherwise, print the column separator.
+            else {
+                m_outStream << m_tableProperties.columnSeparator;
             }
 
             return m_currentColumn;
@@ -635,6 +665,12 @@ namespace trl
 
     private: //===== Private Static Functions
 
+        /**
+         * @brief Convenience function for setting the text style and color for the given output stream.
+         * @param stream The output stream to format.
+         * @param style The style of the output stream.
+         * @param color The color of the output stream.
+         */
         static void SetStreamFormat(std::ostream& stream,
                                     TextStyle style,
                                     TextColor color) {
@@ -691,6 +727,10 @@ namespace trl
             }
         }
 
+        /**
+         * @brief Reset the formatting of the given output stream to the default values.
+         * @param stream
+         */
         static void ResetStreamFormat(std::ostream& stream) {
             stream << rang::style::reset;
             stream << rang::fg::reset;
